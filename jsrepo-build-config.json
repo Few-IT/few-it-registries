@@ -4,14 +4,14 @@
 	"dirs": [
 		"./src"
 	],
+	"includeBlocks": [],
+	"includeCategories": [],
+	"excludeBlocks": [],
+	"excludeCategories": [],
 	"doNotListBlocks": [],
 	"doNotListCategories": [],
 	"listBlocks": [],
 	"listCategories": [],
 	"excludeDeps": [],
-	"includeBlocks": [],
-	"includeCategories": [],
-	"excludeBlocks": [],
-	"excludeCategories": [],
 	"preview": false
 }

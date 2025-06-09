@@ -1,51 +1,63 @@
 {
-  "categories": [
-    {
-      "name": "Token Generator",
-      "blocks": [
-        {
-          "name": "api-client",
-          "directory": "src/lib",
-          "category": "lib",
-          "tests": false,
-          "subdirectory": false,
-          "list": true,
-          "files": ["api-client.ts"],
-          "localDependencies": ["lib/cookies", "lib/token"],
-          "_imports_": {
-            "./cookies": "{{lib/cookies}}",
-            "./token": "{{lib/token}}"
-          },
-          "dependencies": ["axios", "date-fns"],
-          "devDependencies": []
-        },
-        {
-          "name": "cookies",
-          "directory": "src/lib",
-          "category": "lib",
-          "tests": false,
-          "subdirectory": false,
-          "list": true,
-          "files": ["cookies.ts"],
-          "localDependencies": [],
-          "_imports_": {},
-          "dependencies": [],
-          "devDependencies": []
-        },
-        {
-          "name": "token",
-          "directory": "src/lib",
-          "category": "lib",
-          "tests": false,
-          "subdirectory": false,
-          "list": true,
-          "files": ["token.ts"],
-          "localDependencies": [],
-          "_imports_": {},
-          "dependencies": [],
-          "devDependencies": []
-        }
-      ]
-    }
-  ]
+	"categories": [
+		{
+			"name": "lib",
+			"blocks": [
+				{
+					"name": "api-client",
+					"directory": "src/lib",
+					"category": "lib",
+					"tests": false,
+					"subdirectory": false,
+					"list": true,
+					"files": [
+						"api-client.ts"
+					],
+					"localDependencies": [
+						"lib/cookies",
+						"lib/token"
+					],
+					"_imports_": {
+						"./cookies": "{{lib/cookies}}",
+						"./token": "{{lib/token}}"
+					},
+					"dependencies": [
+						"axios",
+						"date-fns"
+					],
+					"devDependencies": []
+				},
+				{
+					"name": "cookies",
+					"directory": "src/lib",
+					"category": "lib",
+					"tests": false,
+					"subdirectory": false,
+					"list": true,
+					"files": [
+						"cookies.ts"
+					],
+					"localDependencies": [],
+					"_imports_": {},
+					"dependencies": [],
+					"devDependencies": []
+				},
+				{
+					"name": "token",
+					"directory": "src/lib",
+					"category": "lib",
+					"tests": false,
+					"subdirectory": false,
+					"list": true,
+					"files": [
+						"token.ts"
+					],
+					"localDependencies": [],
+					"_imports_": {},
+					"dependencies": [],
+					"devDependencies": []
+				}
+			]
+		}
+	]
 }
