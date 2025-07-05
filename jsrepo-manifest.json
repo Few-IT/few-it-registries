@@ -1,6 +1,43 @@
 {
 	"categories": [
 		{
+			"name": "config",
+			"blocks": [
+				{
+					"name": "constants",
+					"directory": "src/config",
+					"category": "config",
+					"tests": false,
+					"subdirectory": false,
+					"list": true,
+					"files": [
+						"constants.ts"
+					],
+					"localDependencies": [],
+					"_imports_": {},
+					"dependencies": [],
+					"devDependencies": []
+				},
+				{
+					"name": "env",
+					"directory": "src/config",
+					"category": "config",
+					"tests": false,
+					"subdirectory": false,
+					"list": true,
+					"files": [
+						"env.ts"
+					],
+					"localDependencies": [],
+					"_imports_": {},
+					"dependencies": [
+						"zod"
+					],
+					"devDependencies": []
+				}
+			]
+		},
+		{
 			"name": "lib",
 			"blocks": [
 				{
@@ -13,14 +50,8 @@
 					"files": [
 						"api-client.ts"
 					],
-					"localDependencies": [
-						"lib/cookies",
-						"lib/token"
-					],
-					"_imports_": {
-						"./cookies": "{{lib/cookies}}",
-						"./token": "{{lib/token}}"
-					},
+					"localDependencies": [],
+					"_imports_": {},
 					"dependencies": [
 						"axios",
 						"date-fns"
@@ -51,6 +82,33 @@
 					"list": true,
 					"files": [
 						"token.ts"
+					],
+					"localDependencies": [
+						"lib/cookies"
+					],
+					"_imports_": {
+						"./cookies": "{{lib/cookies}}"
+					},
+					"dependencies": [
+						"axios",
+						"nanoid"
+					],
+					"devDependencies": []
+				}
+			]
+		},
+		{
+			"name": "types",
+			"blocks": [
+				{
+					"name": "base",
+					"directory": "src/types",
+					"category": "types",
+					"tests": false,
+					"subdirectory": false,
+					"list": true,
+					"files": [
+						"base.ts"
 					],
 					"localDependencies": [],
 					"_imports_": {},

@@ -1,92 +1,136 @@
-import Axios, { InternalAxiosRequestConfig } from "axios";
+import Axios, {
+  AxiosError,
+  InternalAxiosRequestConfig,
+  isAxiosError,
+} from "axios";
 import { toDate } from "date-fns";
 
 import { auth, responses } from "@/config/constants";
 import { env } from "@/config/env";
-import { paths } from "@/config/paths";
 
-import { clearAllCookies, getCookie, setCookie } from "./cookies";
-import { generateToken, refreshToken } from "./token";
+import { clearAllCookies, getCookie, setCookie } from "@/lib/cookies";
+import { generateToken, refreshToken } from "@/lib/token";
 
-const checkToken = async () => {
-  let token = getCookie(auth.token);
-  if (!token) {
-    const refresh_token = getCookie(auth.refresh_token);
-    if (refresh_token) {
-      const response = await refreshToken();
-      if (response?.data?.response?.message_en === responses.success) {
-        token = response?.data?.response?.data?.token || "";
-        const expires = toDate(
-          response?.data?.response?.data?.token_expired || ""
-        );
-        const refresh_token_expires = toDate(
-          response?.data?.response?.data?.refresh_token_expired || ""
-        );
+let isRefreshingToken = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
 
-        setCookie(auth.token, token, expires);
-        setCookie(
-          auth.token_expired,
-          response?.data?.response?.data?.token_expired || "",
-          expires
-        );
-        setCookie(
-          auth.refresh_token,
-          response?.data?.response?.data?.refresh_token || "",
-          refresh_token_expires
-        );
-        setCookie(
-          auth.refresh_token_expired,
-          response?.data?.response?.data?.refresh_token_expired || "",
-          refresh_token_expires
-        );
-
-        return token;
-      }
-    }
-
+const createNewToken = async () => {
+  try {
     const response = await generateToken();
     if (response?.data?.response?.message_en === responses.success) {
-      token = response?.data?.response?.data?.token || "";
-      const expires = toDate(
-        response?.data?.response?.data?.token_expired || ""
+      const token = response?.data?.response?.data?.token || "";
+      const tokenExpires = toDate(
+        `${response?.data?.response?.data?.token_expired}Z`
       );
-      const refresh_token_expires = toDate(
-        response?.data?.response?.data?.refresh_token_expired || ""
+      const refreshTokenExpires = toDate(
+        `${response?.data?.response?.data?.refresh_token_expired}Z`
       );
 
-      setCookie(auth.token, token, expires);
-      setCookie(
-        auth.token_expired,
-        response?.data?.response?.data?.token_expired || "",
-        expires
-      );
+      setCookie(auth.token, token || "", tokenExpires);
       setCookie(
         auth.refresh_token,
         response?.data?.response?.data?.refresh_token || "",
-        refresh_token_expires
+        refreshTokenExpires
       );
-      setCookie(
-        auth.refresh_token_expired,
-        response?.data?.response?.data?.refresh_token_expired || "",
-        refresh_token_expires
-      );
-    }
-  }
 
-  return token;
+      return token;
+    }
+
+    return null;
+  } catch (error) {
+    return null;
+  }
 };
 
 async function authRequestInterceptor(config: InternalAxiosRequestConfig) {
-  if (config.headers) {
-    config.headers.Accept = "application/json";
+  try {
+    if (config.headers) {
+      config.headers.Accept = "application/json";
+    }
+
+    let token = getCookie(auth.token);
+    if (!token) {
+      const tokenRefresh = getCookie(auth.refresh_token);
+
+      if (!tokenRefresh) {
+        token = await createNewToken();
+      } else {
+        if (isRefreshingToken) {
+          return new Promise<InternalAxiosRequestConfig>((resolve) => {
+            refreshSubscribers.push((token) => {
+              config.headers.token = token;
+              resolve(config);
+            });
+          });
+        }
+
+        isRefreshingToken = true;
+        try {
+          const response = await refreshToken();
+
+          if (response?.data?.response?.message_en === responses.success) {
+            token = response?.data?.response?.data?.token || "";
+            const tokenExpires = toDate(
+              `${response?.data?.response?.data?.token_expired}Z`
+            );
+            const refreshTokenExpires = toDate(
+              `${response?.data?.response?.data?.refresh_token_expired}Z`
+            );
+
+            setCookie(auth.token, token || "", tokenExpires);
+            setCookie(
+              auth.refresh_token,
+              tokenRefresh || "",
+              refreshTokenExpires
+            );
+
+            isRefreshingToken = false;
+            refreshSubscribers.forEach((subscriber) => subscriber(token || ""));
+            refreshSubscribers = [];
+          } else {
+            clearAllCookies();
+            token = await createNewToken();
+          }
+        } catch (refreshError) {
+          console.log("failed to refresh token", { refreshError });
+          clearAllCookies();
+          token = await createNewToken();
+        }
+      }
+    }
+
+    config.headers.token = token;
+    return config;
+  } catch (error) {
+    console.error("auth interceptor failed request", { error });
+
+    if (isNetworkError(error)) {
+      throw new Error("Network error during authentication");
+    }
+
+    if (isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401) {
+        clearAllCookies();
+        redirectToLogin();
+      }
+    }
+
+    throw error;
   }
+}
 
-  const token = await checkToken();
-  config.headers.token = token;
+function isNetworkError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    ["ECONNABORTED", "ENETDOWN"].includes(error.code as string)
+  );
+}
 
-  console.log({ config });
-
-  return config;
+function redirectToLogin() {
+  // Implementation depends on your framework
+  window.location.href = "/login";
 }
 
 export const api = Axios.create({
@@ -98,63 +142,19 @@ api.interceptors.response.use(
   (response) => {
     return response.data;
   },
-  async (error) => {
-    const previousRequest = error.config;
-    const message = error.response?.data?.response?.message_en || error.message;
+  (error) => {
+    // const message = error.response?.data?.message || error.message;
     // useNotifications.getState().addNotification({
     //   type: 'error',
     //   title: 'Error',
     //   message,
     // });
 
-    if (message === responses.unauthorizedToken) {
-      // refresh token
-      let token = getCookie(auth.refresh_token);
-
-      if (token) {
-        const response = await refreshToken();
-        if (response?.data?.response?.message_en === responses.success) {
-          token = response?.data?.response?.data?.token || "";
-          const expires = toDate(
-            response?.data?.response?.data?.token_expired || ""
-          );
-
-          setCookie(auth.token, token, expires);
-          setCookie(
-            auth.token_expired,
-            response?.data?.response?.data?.token_expired || "",
-            expires
-          );
-          setCookie(
-            auth.refresh_token,
-            response?.data?.response?.data?.refresh_token || "",
-            expires
-          );
-          setCookie(
-            auth.refresh_token_expired,
-            response?.data?.response?.data?.refresh_token_expired || "",
-            expires
-          );
-        }
-      } else {
-        token = await checkToken();
-
-        return Promise.resolve(
-          api(previousRequest, {
-            headers: {
-              ...previousRequest.headers,
-              token,
-            },
-          })
-        );
-      }
-    }
-
-    if (message === responses.unauthorizedRefreshToken) {
-      clearAllCookies();
-      const searchParams = new URLSearchParams();
-      const redirectTo = searchParams.get("redirectTo");
-      window.location.href = paths.auth.login.getHref(redirectTo || undefined);
+    if (error.response?.status === 401) {
+      // const searchParams = new URLSearchParams();
+      // let redirectTo = searchParams.get("redirectTo");
+      // console.log({ redirectTo });
+      // window.location.href = paths.auth.login.getHref(redirectTo);
     }
 
     return Promise.reject(error);
